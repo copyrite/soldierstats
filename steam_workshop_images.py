@@ -22,77 +22,72 @@ if __name__ == "__main__":
         "-n",
         "--number",
         type=int,
-        help="Number of soldiers to generate, per generation type",
+        help="Number of soldiers to generate per sample",
     )
     args = parser.parse_args()
 
-    lwotc_sample = dict(
-        (stat, np.zeros(range_.max_delta - range_.min_delta + 1))
-        for stat, range_ in Soldier.STATS.items()
-    )
-
-    mod_sample = dict(
-        (stat, np.zeros(range_.max_delta - range_.min_delta + 1))
-        for stat, range_ in Soldier.STATS.items()
-    )
-
-    mod_stat_totals = []
-
-    for _ in range(args.number):
-        lwotc_soldier = LWOTCSoldier()
-        mod_soldier = ActuallyNCESoldier()
-        for stat, range_ in Soldier.STATS.items():
-            lwotc_sample[stat][
-                getattr(lwotc_soldier, stat).current
-                - (range_.default + range_.min_delta)
-            ] += 1
-            mod_sample[stat][
-                getattr(mod_soldier, stat).current - (range_.default + range_.min_delta)
-            ] += 1
-        mod_stat_totals.append(mod_soldier.weighed_stat_total())
-
-    # The 7 base stats
     plt.rcParams["legend.fancybox"] = False
     plt.rcParams["legend.framealpha"] = EXPLAINER["alpha"]
     plt.rcParams["legend.facecolor"] = EXPLAINER["facecolor"]
     plt.rcParams["legend.edgecolor"] = EXPLAINER["edgecolor"]
-    # plt.rcParams["legend.linewidth"] = EXPLAINER["linewidth"]
+    stat_figs = {}
+    stat_axes = {}
 
+    # Create figures/axes
     for stat, range_ in Soldier.STATS.items():
-        values = range(
-            range_.default + range_.min_delta, range_.default + range_.max_delta + 1
-        )
-        fig, ax = plt.subplots(1, 1)
-        ax.set_title(f"{stat} (n = {args.number})")
-        ax.yaxis.set_major_formatter(mtick.PercentFormatter(args.number))
-        for i, sample in enumerate((lwotc_sample, mod_sample)):
-            ax.bar(
-                x=[value - 0.75 / 4 + i * 0.75 / 2 for value in values],
+        fig, ax = plt.subplots()
+        stat_figs[stat], stat_axes[stat] = fig, ax
+
+    totals_fig, totals_ax = plt.subplots()
+
+    for sample_index, factory in enumerate((LWOTCSoldier, ActuallyNCESoldier)):
+        # Put sample in a matrix
+        sample = np.zeros([args.number, len(Soldier.STATS)], dtype=np.int16)
+        totals = np.zeros([args.number], dtype=np.int16)
+        default_total = Soldier().weighed_stat_total()
+        for i in range(args.number):
+            sol = factory()
+            sample[i, :] = [getattr(sol, stat).current for stat in Soldier.STATS]
+            totals[i] = sol.weighed_stat_total() - default_total
+
+        # The 7 stat charts
+        for stat_index, (stat, range_) in enumerate(Soldier.STATS.items()):
+            values = range(
+                range_.default + range_.min_delta, range_.default + range_.max_delta + 1
+            )
+            stat_axes[stat].bar(
+                x=[value - 0.75 / 4 + sample_index * 0.75 / 2 for value in values],
                 width=0.75 / 2,
-                height=sample[stat],
-                color=COLORS[i],
+                height=[(sample[:, stat_index] == value).sum() for value in values],
+                color=COLORS[sample_index],
                 edgecolor="black",
                 linewidth=0.75,
             )
-            legend = ax.legend(["Base LWOTC", "Actually NCE"])
-            legend.get_frame().set_edgecolor(EXPLAINER["edgecolor"])
-            legend.get_frame().set_linewidth(EXPLAINER["linewidth"])
-            fig.savefig(
-                f"{IMG_FILE_PREFIX}{stat}.png",
+
+        # Weighed Stat Total chart
+        if factory == ActuallyNCESoldier:
+            totals_ax.hist(
+                totals,
+                color=COLORS[1],
+                edgecolor="black",
+                linewidth=0.75,
             )
 
-    # Weighed Stat Total chart
-    fig, ax = plt.subplots(1, 1)
-    ax.set_title(f"Weighed Stat Totals (n = {args.number})")
-    ax.yaxis.set_major_formatter(mtick.PercentFormatter(args.number))
-    ax.hist(
-        mod_stat_totals,
-        color=COLORS[1],
-        edgecolor="black",
-        linewidth=0.75,
-    )
-    ax.set_ylim([0, ax.get_ylim()[1] * 1.35])
-    ax.text(
+    # Edit axes, save figs
+    for stat in Soldier.STATS:
+        ax = stat_axes[stat]
+        ax.set_title(f"{stat} (n = {args.number})")
+        ax.yaxis.set_major_formatter(mtick.PercentFormatter(args.number))
+        legend = ax.legend(["Base LWOTC", "Actually NCE"])
+        legend.get_frame().set_edgecolor(EXPLAINER["edgecolor"])
+        legend.get_frame().set_linewidth(EXPLAINER["linewidth"])
+
+        stat_figs[stat].savefig(f"{IMG_FILE_PREFIX}{stat}.png")
+
+    totals_ax.set_title(f"Weighed Stat Totals (n = {args.number})")
+    totals_ax.yaxis.set_major_formatter(mtick.PercentFormatter(args.number))
+    totals_ax.set_ylim([0, totals_ax.get_ylim()[1] * 1.35])
+    totals_ax.text(
         0.5,
         0.96,
         dedent(
@@ -100,7 +95,7 @@ if __name__ == "__main__":
             The relative quality of soldiers generated by this mod,
             in terms of how LWOTC's swap table values stats.
             This is zero for all unmodded LWOTC soldiers.
-            Aim is worth 4, Mob and HP are worth 12,
+            Offense is worth 3, Mobility and HP are worth 12,
             everything else is 1.
             """
         ).strip(),
@@ -109,4 +104,4 @@ if __name__ == "__main__":
         horizontalalignment="center",
         bbox=EXPLAINER,
     )
-    fig.savefig(f"{IMG_FILE_PREFIX}Totals.png")
+    totals_fig.savefig(f"{IMG_FILE_PREFIX}Totals.png")
