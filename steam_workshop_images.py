@@ -2,12 +2,14 @@ import argparse
 from textwrap import dedent
 
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mtick
+import matplotlib.patches as patch
 
 from soldier import Soldier, LWOTCSoldier, ActuallyNCESoldier
 
 COLORS = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+CORR_COLORMAP = mpl.colormaps["seismic"]
 EXPLAINER = {
     "edgecolor": "black",
     "facecolor": "lightgray",
@@ -39,6 +41,7 @@ if __name__ == "__main__":
         stat_figs[stat], stat_axes[stat] = fig, ax
 
     totals_fig, totals_ax = plt.subplots()
+    corr_fig, corr_axes = plt.subplots(2)
 
     for sample_index, factory in enumerate((LWOTCSoldier, ActuallyNCESoldier)):
         # Put sample in a matrix
@@ -73,6 +76,16 @@ if __name__ == "__main__":
                 linewidth=0.75,
             )
 
+        # Covariance matrices & Aim/Mob correlation chart
+        cov = np.cov(sample.T)
+        cov /= np.sqrt(np.asmatrix(cov).diagonal().T * np.asmatrix(cov).diagonal())
+        corr_axes[sample_index].pcolor(
+            cov,
+            cmap=CORR_COLORMAP,
+            vmin=-max(abs(cov.min(None)), abs(cov.max(None))),
+            vmax=max(abs(cov.min(None)), abs(cov.max(None))),
+        )
+
     # Edit axes, save figs
     for stat in Soldier.STATS:
         ax = stat_axes[stat]
@@ -105,3 +118,63 @@ if __name__ == "__main__":
         bbox=EXPLAINER,
     )
     totals_fig.savefig(f"{IMG_FILE_PREFIX}Totals.png")
+
+    for ax_index, ax in enumerate(corr_axes):
+        ax.tick_params(top=True, labeltop=True, bottom=False, labelbottom=False)
+        ax.set_xticks(
+            [0.5 + i for i in range(len(Soldier.STATS))],
+            labels=Soldier.STATS,
+        )
+        ax.set_ylim(len(Soldier.STATS), 0)
+        ax.set_yticks(
+            [0.5 + i for i in range(len(Soldier.STATS))],
+            labels=Soldier.STATS,
+        )
+        plt.setp(
+            ax.get_xticklabels(),
+            rotation=45,
+            ha="left",
+            rotation_mode="anchor",
+        )
+    corr_axes[0].text(
+        7 * len(Soldier.STATS) / 4,
+        len(Soldier.STATS) / 2,
+        dedent(
+            """
+            In base LWOTC, all stats are (mostly)
+            negatively correlated. This is
+            expected, since one high stat predicts
+            others to be lower -- and vice versa.
+            """
+        ).strip(),
+        verticalalignment="center",
+        horizontalalignment="center",
+        bbox=EXPLAINER,
+    )
+    corr_axes[1].text(
+        7 * len(Soldier.STATS) / 4,
+        len(Soldier.STATS) / 2,
+        dedent(
+            """
+            This mod's goal was to make stat rolls
+            independent of each other. According
+            to these correlations, the goal was met.
+            """
+        ).strip(),
+        verticalalignment="center",
+        horizontalalignment="center",
+        bbox=EXPLAINER,
+    )
+
+    corr_fig.tight_layout()
+    corr_fig.subplots_adjust(0.15, right=0.48)
+    legend = corr_fig.legend(
+        labels=["More correlated", "More anticorrelated"],
+    )
+    for patch, color in zip(
+        legend.get_patches(),
+        [CORR_COLORMAP.get_over(), CORR_COLORMAP.get_under()],
+    ):
+        patch.set_color(color)
+
+    corr_fig.savefig(f"{IMG_FILE_PREFIX}corr.png")
