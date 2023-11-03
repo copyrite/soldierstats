@@ -51,7 +51,11 @@ if __name__ == "__main__":
         stat_figs[stat], stat_axes[stat] = fig, ax
 
     totals_fig, totals_ax = plt.subplots()
-    corr_fig, corr_axes = plt.subplots(2)
+    corr_fig, corr_axes = plt.subplot_mosaic(
+        [["top", "top_text"], ["bottom", "bottom_text"], ["colorbar", "colorbar"]],
+        width_ratios=[50, 50],
+        height_ratios=[40, 40, 10],
+    )
     mob_aim_fig, mob_aim_axes = plt.subplot_mosaic(
         [["top", "colorbar"], ["bottom", "colorbar"]], width_ratios=[95, 5]
     )
@@ -99,7 +103,7 @@ if __name__ == "__main__":
         # Covariance matrices
         cov = np.cov(sample.T)
         cov /= np.sqrt(np.asmatrix(cov).diagonal().T * np.asmatrix(cov).diagonal())
-        corr_axes[sample_index].pcolor(
+        corr_axes[("top", "bottom")[sample_index]].pcolor(
             cov,
             cmap=CORR_COLORMAP,
             vmin=-max(abs(cov.min(None)), abs(cov.max(None))),
@@ -142,7 +146,8 @@ if __name__ == "__main__":
     )
     totals_fig.savefig(f"{IMG_FILE_PREFIX}Totals.png")
 
-    for ax_index, ax in enumerate(corr_axes):
+    for ax_key in ("top", "bottom"):
+        ax = corr_axes[ax_key]
         ax.tick_params(top=True, labeltop=True, bottom=False, labelbottom=False)
         ax.set_xticks(
             [0.5 + i for i in range(len(Soldier.STATS))],
@@ -159,29 +164,38 @@ if __name__ == "__main__":
             ha="left",
             rotation_mode="anchor",
         )
-    corr_axes[0].text(
-        7 * len(Soldier.STATS) / 4,
-        len(Soldier.STATS) / 2,
+    for ax_key in ("top_text", "bottom_text"):
+        ax = corr_axes[ax_key]
+        ax.set_axis_off()
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+
+    corr_axes["top_text"].text(
+        0.65,
+        0.55,
         dedent(
             """
-            In base LWOTC, all stats are (mostly)
-            negatively correlated. This is
-            expected, since one high stat predicts
-            others to be lower -- and vice versa.
+            In base LWOTC, all stats are
+            (mostly) negatively correlated.
+            This is expected, since one
+            high stat predicts others to
+            be lower -- and vice versa.
             """
         ).strip(),
         verticalalignment="center",
         horizontalalignment="center",
         bbox=EXPLAINER,
     )
-    corr_axes[1].text(
-        7 * len(Soldier.STATS) / 4,
-        len(Soldier.STATS) / 2,
+    corr_axes["bottom_text"].text(
+        0.65,
+        0.55,
         dedent(
             """
-            This mod's goal was to make stat rolls
-            independent of each other. According
-            to these correlations, the goal was met.
+            This mod's goal was to make
+            stat rolls independent of
+            each other. According to
+            these correlations, the goal
+            was met.
             """
         ).strip(),
         verticalalignment="center",
@@ -189,17 +203,19 @@ if __name__ == "__main__":
         bbox=EXPLAINER,
     )
 
+    corr_axes["colorbar"].set_axis_off()
+    colorbar = corr_fig.colorbar(
+        cm.ScalarMappable(cmap=CORR_COLORMAP),
+        ax=corr_axes["colorbar"],
+        orientation="horizontal",
+        location="top",
+        fraction=1,
+    )
+    colorbar.set_ticks(
+        [0, 0.5, 1],
+        labels=["More anticorrelated", "Uncorrelated", "More correlated"],
+    )
     corr_fig.tight_layout()
-    corr_fig.subplots_adjust(0.15, right=0.48)
-    legend = corr_fig.legend(
-        labels=["More correlated", "More anticorrelated"],
-    )
-    for patch, color in zip(
-        legend.get_patches(),
-        [CORR_COLORMAP.get_over(), CORR_COLORMAP.get_under()],
-    ):
-        patch.set_color(color)
-
     corr_fig.savefig(f"{IMG_FILE_PREFIX}corr.png")
 
     mob_aim_max = max(sample.max(None) for sample in mob_aim_samples)
