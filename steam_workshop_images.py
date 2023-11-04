@@ -28,6 +28,21 @@ MOB_RANGE = range(
     Soldier.STATS["Mobility"].default + Soldier.STATS["Mobility"].max_delta + 1,
 )
 
+
+class FigSaver:
+    """
+    Saves matplotlib figures to files that have otherwise the same names,
+    but also have sequential numbering in the end.
+    """
+
+    count = 0
+
+    @staticmethod
+    def save_fig(fig):
+        __class__.count += 1
+        fig.savefig(f"img/SteamWorkshop{str(__class__.count).zfill(2)}.png")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("python steam_workshop_images.py")
     parser.add_argument(
@@ -121,8 +136,7 @@ if __name__ == "__main__":
         legend = ax.legend(["Base LWOTC", "Actually NCE"])
         legend.get_frame().set_edgecolor(EXPLAINER["edgecolor"])
         legend.get_frame().set_linewidth(EXPLAINER["linewidth"])
-
-        stat_figs[stat].savefig(f"{IMG_FILE_PREFIX}{stat}.png")
+        FigSaver.save_fig(stat_figs[stat])
 
     totals_ax.set_title(f"Weighed Stat Totals (n = {args.number})")
     totals_ax.yaxis.set_major_formatter(mtick.PercentFormatter(args.number))
@@ -144,7 +158,7 @@ if __name__ == "__main__":
         horizontalalignment="center",
         bbox=EXPLAINER,
     )
-    totals_fig.savefig(f"{IMG_FILE_PREFIX}Totals.png")
+    FigSaver.save_fig(totals_fig)
 
     for ax_key in ("top", "bottom"):
         ax = corr_axes[ax_key]
@@ -216,7 +230,7 @@ if __name__ == "__main__":
         labels=["More anticorrelated", "Uncorrelated", "More correlated"],
     )
     corr_fig.tight_layout()
-    corr_fig.savefig(f"{IMG_FILE_PREFIX}corr.png")
+    FigSaver.save_fig(corr_fig)
 
     mob_aim_max = max(sample.max(None) for sample in mob_aim_samples)
     for ax, sample in zip(
@@ -251,4 +265,4 @@ if __name__ == "__main__":
         labels=[f"{100 * i * mob_aim_max / 5 / args.number}%" for i in range(6)],
     )
     mob_aim_fig.tight_layout()
-    mob_aim_fig.savefig(f"{IMG_FILE_PREFIX}Mob_Aim.png")
+    FigSaver.save_fig(mob_aim_fig)
