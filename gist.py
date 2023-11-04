@@ -1,6 +1,7 @@
 import argparse
 import random
 from collections import namedtuple
+from typing import Tuple
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -149,7 +150,7 @@ def is_valid_swap(delta, swap: StatSwap):
     )
 
 
-def dice_notation(shorthand: str) -> tuple[int, int]:
+def dice_notation(shorthand: str) -> Tuple[int, int]:
     """A simple parser for "NdX" style dice notation."""
     left, _, right = shorthand.partition("d")
     return int(left), int(right)
