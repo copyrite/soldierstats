@@ -1,5 +1,7 @@
 import random
 from collections import namedtuple
+from functools import partial
+from typing import Sequence, Tuple
 
 Stat = namedtuple(
     "Stat", ("default", "min_delta", "max_delta", "weight"), defaults=(1,)
@@ -7,6 +9,57 @@ Stat = namedtuple(
 
 StatSwap = namedtuple(
     "StatSwap", ("StatUp", "StatUp_Amount", "StatDown", "StatDown_Amount", "Weight")
+)
+
+LWOTC_SWAPS = (
+    StatSwap("Offense", 1, "Will", 3, 1.0),
+    StatSwap("Offense", 2, "Will", 6, 1.0),
+    StatSwap("Offense", 4, "Mobility", 1, 1.5),
+    StatSwap("Offense", 4, "HP", 1, 1.5),
+    StatSwap("Offense", 1, "Hacking", 3, 0.5),
+    StatSwap("Offense", 1, "PsiOffense", 3, 1.0),
+    StatSwap("Offense", 2, "PsiOffense", 6, 1.0),
+    StatSwap("Offense", 1, "Dodge", 3, 1.0),
+    StatSwap("Offense", 2, "Dodge", 6, 0.5),
+    StatSwap("HP", 1, "Mobility", 1, 2.0),
+    StatSwap("HP", 1, "PsiOffense", 12, 1.0),
+    StatSwap("Mobility", 1, "PsiOffense", 12, 1.0),
+    StatSwap("Dodge", 1, "Will", 1, 1.0),
+    StatSwap("Dodge", 2, "Will", 2, 1.0),
+    StatSwap("Dodge", 3, "Will", 3, 1.0),
+    StatSwap("Dodge", 4, "Will", 4, 1.0),
+    StatSwap("Dodge", 1, "Hacking", 1, 0.5),
+    StatSwap("Dodge", 2, "Hacking", 2, 0.5),
+    StatSwap("Dodge", 3, "Hacking", 3, 0.5),
+    StatSwap("Dodge", 4, "Hacking", 4, 0.5),
+    StatSwap("Dodge", 4, "PsiOffense", 4, 1.0),
+    StatSwap("Dodge", 5, "PsiOffense", 5, 1.0),
+    StatSwap("Dodge", 6, "PsiOffense", 6, 1.0),
+    StatSwap("Dodge", 7, "PsiOffense", 7, 1.0),
+    StatSwap("Will", 1, "Hacking", 1, 0.5),
+    StatSwap("Will", 2, "Hacking", 2, 0.5),
+    StatSwap("Will", 4, "PsiOffense", 4, 0.5),
+    StatSwap("Will", 5, "PsiOffense", 5, 1.0),
+    StatSwap("Will", 6, "PsiOffense", 6, 1.0),
+    StatSwap("Will", 7, "PsiOffense", 7, 1.0),
+)
+
+ANCEV1_SWAPS = (
+    StatSwap("Offense", 1, "Offense", 0, 2.0),
+    StatSwap("Offense", 2, "Offense", 0, 1.0),
+    StatSwap("HP", 1, "HP", 0, 0.75),
+    StatSwap("Mobility", 1, "Mobility", 0, 0.75),
+    StatSwap("Dodge", 1, "Dodge", 0, 1.25),
+    StatSwap("Dodge", 2, "Dodge", 0, 1.0),
+    StatSwap("Dodge", 3, "Dodge", 0, 0.75),
+    StatSwap("Will", 1, "Will", 0, 1.25),
+    StatSwap("Will", 2, "Will", 0, 1.0),
+    StatSwap("Will", 3, "Will", 0, 0.75),
+    StatSwap("Hacking", 1, "Hacking", 0, 2.0),
+    StatSwap("Hacking", 2, "Hacking", 0, 1.0),
+    StatSwap("PsiOffense", 1, "PsiOffense", 0, 1.25),
+    StatSwap("PsiOffense", 2, "PsiOffense", 0, 1.0),
+    StatSwap("PsiOffense", 3, "PsiOffense", 0, 0.75),
 )
 
 
@@ -26,11 +79,15 @@ class Soldier:
         "Hacking": Stat(5, -4, 15),
         "PsiOffense": Stat(20, -15, 15),
     }
-    __slots__ = STATS
+    __slots__ = list(STATS) + ["gen_method"]
 
-    def __init__(self):
+    def __init__(self, gen_method=None):
         for stat, range_ in self.STATS.items():
             setattr(self, stat, EStat(range_))
+
+        self.gen_method = gen_method
+        if gen_method:
+            gen_method(self)
 
     def weighed_stat_total(self) -> int:
         """
@@ -48,43 +105,23 @@ class Soldier:
     def to_dict(self):
         return {stat: getattr(self, stat).current for stat in self.STATS}
 
-    def try_swap(self, swap: StatSwap):
-        old_up = getattr(self, swap.StatUp).current
-        old_down = getattr(self, swap.StatDown).current
 
-        getattr(self, swap.StatUp).current += swap.StatUp_Amount
-        getattr(self, swap.StatDown).current -= swap.StatDown_Amount
+class StatSwapper:
+    __slots__ = ["dice", "swap_table"]
 
-        if (
-            getattr(self, swap.StatDown).current
-            < self.STATS[swap.StatDown].default + self.STATS[swap.StatDown].min_delta
-        ) or (
-            getattr(self, swap.StatUp).current
-            > self.STATS[swap.StatUp].default + self.STATS[swap.StatUp].max_delta
-        ):
-            getattr(self, swap.StatUp).current = old_up
-            getattr(self, swap.StatDown).current = old_down
-            raise RuntimeError(
-                f"Swap {swap} would have shifted an attribute out of bounds"
-            )
+    def __init__(self, dice: Sequence[int] = [], swap_table: Tuple[StatSwap] = []):
+        self.dice = dice
+        self.swap_table = swap_table
 
-
-class StatSwapSoldier(Soldier):
-    dice_count = 0
-    dice_size = 1
-
-    def __init__(self):
-        super().__init__()
+    def __call__(self, sol: Soldier):
 
         # Roll for number of stats to apply
-        for __ in range(
-            sum(random.randint(1, self.dice_size) for _ in range(self.dice_count))
-        ):
+        for __ in range(sum(random.randint(1, dice) for dice in self.dice)):
             # Try 1000 times to find a suitable swap
             for ___ in range(1000):
                 swap = random.choices(
-                    self.STAT_SWAPS,
-                    weights=list(swap.Weight for swap in self.STAT_SWAPS),
+                    self.swap_table,
+                    weights=list(swap.Weight for swap in self.swap_table),
                 )[0]
 
                 # 50% chance to flip it around
@@ -97,76 +134,31 @@ class StatSwapSoldier(Soldier):
                         swap.Weight,
                     )
                 try:
-                    self.try_swap(swap)
+                    self.try_swap(sol, swap)
                 except RuntimeError:
                     pass  # Swap not applied, try again
                 else:
                     break  # Swap applied, exit inner loop
 
+    def try_swap(self, sol: Soldier, swap: StatSwap):
+        old_up = getattr(sol, swap.StatUp).current
+        old_down = getattr(sol, swap.StatDown).current
 
-class LWOTCSoldier(StatSwapSoldier):
-    """Implements soldier generation as defined in unmodded LWOTC."""
+        getattr(sol, swap.StatUp).current += swap.StatUp_Amount
+        getattr(sol, swap.StatDown).current -= swap.StatDown_Amount
 
-    dice_count = 5
-    dice_size = 4
+        if (
+            getattr(sol, swap.StatDown).current
+            < Soldier.STATS[swap.StatDown].default + Soldier.STATS[swap.StatDown].min_delta
+        ) or (
+            getattr(sol, swap.StatUp).current
+            > Soldier.STATS[swap.StatUp].default + Soldier.STATS[swap.StatUp].max_delta
+        ):  # fmt: skip
+            getattr(sol, swap.StatUp).current = old_up
+            getattr(sol, swap.StatDown).current = old_down
+            raise RuntimeError(
+                f"Swap {swap} would have swapped an attribute out of bounds"
+            )
 
-    STAT_SWAPS = [
-        StatSwap("Offense", 1, "Will", 3, 1.0),
-        StatSwap("Offense", 2, "Will", 6, 1.0),
-        StatSwap("Offense", 4, "Mobility", 1, 1.5),
-        StatSwap("Offense", 4, "HP", 1, 1.5),
-        StatSwap("Offense", 1, "Hacking", 3, 0.5),
-        StatSwap("Offense", 1, "PsiOffense", 3, 1.0),
-        StatSwap("Offense", 2, "PsiOffense", 6, 1.0),
-        StatSwap("Offense", 1, "Dodge", 3, 1.0),
-        StatSwap("Offense", 2, "Dodge", 6, 0.5),
-        StatSwap("HP", 1, "Mobility", 1, 2.0),
-        StatSwap("HP", 1, "PsiOffense", 12, 1.0),
-        StatSwap("Mobility", 1, "PsiOffense", 12, 1.0),
-        StatSwap("Dodge", 1, "Will", 1, 1.0),
-        StatSwap("Dodge", 2, "Will", 2, 1.0),
-        StatSwap("Dodge", 3, "Will", 3, 1.0),
-        StatSwap("Dodge", 4, "Will", 4, 1.0),
-        StatSwap("Dodge", 1, "Hacking", 1, 0.5),
-        StatSwap("Dodge", 2, "Hacking", 2, 0.5),
-        StatSwap("Dodge", 3, "Hacking", 3, 0.5),
-        StatSwap("Dodge", 4, "Hacking", 4, 0.5),
-        StatSwap("Dodge", 4, "PsiOffense", 4, 1.0),
-        StatSwap("Dodge", 5, "PsiOffense", 5, 1.0),
-        StatSwap("Dodge", 6, "PsiOffense", 6, 1.0),
-        StatSwap("Dodge", 7, "PsiOffense", 7, 1.0),
-        StatSwap("Will", 1, "Hacking", 1, 0.5),
-        StatSwap("Will", 2, "Hacking", 2, 0.5),
-        StatSwap("Will", 4, "PsiOffense", 4, 0.5),
-        StatSwap("Will", 5, "PsiOffense", 5, 1.0),
-        StatSwap("Will", 6, "PsiOffense", 6, 1.0),
-        StatSwap("Will", 7, "PsiOffense", 7, 1.0),
-    ]
-
-
-class ActuallyNCESoldier(StatSwapSoldier):
-    """
-    Implements soldier generation as defined in LWOTC, but with
-    the swap table defined by the mod "Actually Not Created Equal".
-    """
-
-    dice_count = 8
-    dice_size = 8
-
-    STAT_SWAPS = [
-        StatSwap("Offense", 1, "Offense", 0, 2.0),
-        StatSwap("Offense", 2, "Offense", 0, 1.0),
-        StatSwap("HP", 1, "HP", 0, 0.75),
-        StatSwap("Mobility", 1, "Mobility", 0, 0.75),
-        StatSwap("Dodge", 1, "Dodge", 0, 1.25),
-        StatSwap("Dodge", 2, "Dodge", 0, 1.0),
-        StatSwap("Dodge", 3, "Dodge", 0, 0.75),
-        StatSwap("Will", 1, "Will", 0, 1.25),
-        StatSwap("Will", 2, "Will", 0, 1.0),
-        StatSwap("Will", 3, "Will", 0, 0.75),
-        StatSwap("Hacking", 1, "Hacking", 0, 2.0),
-        StatSwap("Hacking", 2, "Hacking", 0, 1.0),
-        StatSwap("PsiOffense", 1, "PsiOffense", 0, 1.25),
-        StatSwap("PsiOffense", 2, "PsiOffense", 0, 1.0),
-        StatSwap("PsiOffense", 3, "PsiOffense", 0, 0.75),
-    ]
+lwotc_factory = partial(Soldier, StatSwapper(5 * [4], LWOTC_SWAPS))
+ancev1_factory = partial(Soldier, StatSwapper(8 * [8], ANCEV1_SWAPS))

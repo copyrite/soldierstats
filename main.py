@@ -4,11 +4,11 @@ from typing import Tuple
 import numpy as np
 import matplotlib.pyplot as plt
 
-from soldier import Soldier, LWOTCSoldier, ActuallyNCESoldier
+from soldier import Soldier, lwotc_factory, ancev1_factory
 
 SOLDIER_GEN_TYPES = {
-    "lwotc": LWOTCSoldier,
-    "actually": ActuallyNCESoldier,
+    "lwotc": lwotc_factory,
+    "ancev1": ancev1_factory,
 }
 
 
@@ -21,7 +21,7 @@ def dice_notation(shorthand: str) -> Tuple[int, int]:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("python soldierstats.py")
     parser.add_argument(
-        "-n", "--number", type=int, help="Number of soldiers to generate"
+        "-n", "--number", type=int, help="Number of soldiers to generate", required=True
     )
     parser.add_argument(
         "--rolls",
@@ -37,6 +37,7 @@ if __name__ == "__main__":
         "--generation-type",
         choices=SOLDIER_GEN_TYPES,
         help="Which stat generation type to use",
+        required=True,
     )
     args = parser.parse_args()
 
