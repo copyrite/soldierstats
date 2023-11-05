@@ -1,7 +1,7 @@
 import random
 from collections import namedtuple
 from functools import partial
-from typing import Sequence, Tuple
+from typing import Sequence
 
 Stat = namedtuple(
     "Stat", ("default", "min_delta", "max_delta", "weight"), defaults=(1,)
@@ -109,7 +109,7 @@ class Soldier:
 class StatSwapper:
     __slots__ = ["dice", "swap_table"]
 
-    def __init__(self, dice: Sequence[int] = [], swap_table: Tuple[StatSwap] = []):
+    def __init__(self, dice: Sequence[int]=(), swap_table: Sequence[StatSwap] = ()):
         self.dice = dice
         self.swap_table = swap_table
 
@@ -160,5 +160,5 @@ class StatSwapper:
                 f"Swap {swap} would have swapped an attribute out of bounds"
             )
 
-lwotc_factory = partial(Soldier, StatSwapper(5 * [4], LWOTC_SWAPS))
-ancev1_factory = partial(Soldier, StatSwapper(8 * [8], ANCEV1_SWAPS))
+lwotc_factory = partial(Soldier, StatSwapper(5 * (4,), LWOTC_SWAPS))
+ancev1_factory = partial(Soldier, StatSwapper(8 *(8,), ANCEV1_SWAPS))

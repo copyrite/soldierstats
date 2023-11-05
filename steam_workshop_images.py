@@ -1,11 +1,14 @@
 import argparse
 from textwrap import dedent
+from typing import Any
 
 import numpy as np
 import matplotlib as mpl
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
+from numpy.typing import NDArray
+
 
 from soldier import Soldier, lwotc_factory, ancev1_factory
 
@@ -234,7 +237,7 @@ if __name__ == "__main__":
 
     mob_aim_max = max(sample.max(None) for sample in mob_aim_samples)
     for ax, sample in zip(
-        [mob_aim_axes["top"], mob_aim_axes["bottom"]], mob_aim_samples
+        [mob_aim_axes["top"], mob_aim_axes["bottom"]], np.array(mob_aim_samples)
     ):
         ax.pcolor(sample, vmax=mob_aim_max)
 
