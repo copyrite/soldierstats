@@ -4,18 +4,14 @@ from typing import Tuple
 import numpy as np
 import matplotlib.pyplot as plt
 
-from soldier import Soldier, lwotc_factory, ancev1_factory
-
-SOLDIER_GEN_TYPES = {
-    "lwotc": lwotc_factory,
-    "ancev1": ancev1_factory,
-}
-
+from soldier import Soldier, INITIALIZERS
 
 def dice_notation(shorthand: str) -> Tuple[int, int]:
     """A simple parser for "NdX" style dice notation."""
+    if shorthand is None:
+        return
     left, _, right = shorthand.partition("d")
-    return int(left), int(right)
+    return int(left) * (int(right),)
 
 
 if __name__ == "__main__":
@@ -26,17 +22,17 @@ if __name__ == "__main__":
     parser.add_argument(
         "--rolls",
         type=dice_notation,
-        help="Number and sidedness of dice to generate",
-        default="5d4",
+        help="Override the number and sidedness of the dice of the given initializer",
+        default=None,
     )
     # Do/don't plot weighed stat totals. It doesn't make much sense with LWOTC defaults.
     parser.add_argument(
         "--totals", action="store_true", help="Plot the weighed stat totals"
     )
     parser.add_argument(
-        "--generation-type",
-        choices=SOLDIER_GEN_TYPES,
-        help="Which stat generation type to use",
+        "--initializer",
+        choices=INITIALIZERS,
+        help="Which initializer to use",
         required=True,
     )
     parser.add_argument(
@@ -61,10 +57,14 @@ if __name__ == "__main__":
     )
 
     sample = np.zeros([args.number, len(Soldier.STATS)], dtype=np.int16)
-    totals = np.zeros([args.number, len(Soldier.STATS)], dtype=np.int16)
+    totals = np.zeros([args.number], dtype=np.int16)
+
+    initializer = INITIALIZERS[args.initializer]
+    if args.rolls is not None:
+        initializer.dice = args.rolls
 
     for i in range(args.number):
-        sol = SOLDIER_GEN_TYPES[args.generation_type]()
+        sol = Soldier(initializer)
         sample[i, :] = [getattr(sol, stat).current for stat in Soldier.STATS]
         totals[i] = sol.weighed_stat_total() - Soldier.DEFAULT_WEIGHED_STAT_TOTAL
 

@@ -79,15 +79,15 @@ class Soldier:
         "Hacking": Stat(5, -4, 15),
         "PsiOffense": Stat(20, -15, 15),
     }
-    __slots__ = list(STATS) + ["gen_method"]
+    __slots__ = list(STATS) + ["initializer"]
 
-    def __init__(self, gen_method=None):
+    def __init__(self, initializer=None):
         for stat, range_ in self.STATS.items():
             setattr(self, stat, EStat(range_))
 
-        self.gen_method = gen_method
-        if gen_method:
-            gen_method(self)
+        self.initializer = initializer
+        if initializer:
+            initializer(self)
 
     def weighed_stat_total(self) -> int:
         """
@@ -162,6 +162,7 @@ class StatSwapper:
                 f"Swap {swap} would have swapped an attribute out of bounds"
             )
 
-
-lwotc_factory = partial(Soldier, StatSwapper(5 * (4,), LWOTC_SWAPS))
-ancev1_factory = partial(Soldier, StatSwapper(8 *(8,), ANCEV1_SWAPS))
+INITIALIZERS = {
+    "lwotc": StatSwapper(5 * (4,), LWOTC_SWAPS),
+    "ancev1": StatSwapper(8 * (8,), ANCEV1_SWAPS),
+}

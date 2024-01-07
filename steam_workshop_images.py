@@ -10,7 +10,7 @@ import matplotlib.ticker as mtick
 from numpy.typing import NDArray
 
 
-from soldier import Soldier, lwotc_factory, ancev1_factory
+from soldier import Soldier, INITIALIZERS
 
 COLORS = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 CORR_COLORMAP = mpl.colormaps["seismic"]
@@ -79,14 +79,14 @@ if __name__ == "__main__":
     )
     mob_aim_samples = []  # Need to plot after loop, otherwise colormap won't be shared
 
-    for sample_index, factory in enumerate((lwotc_factory, ancev1_factory)):
+    for sample_index, initializer in enumerate(INITIALIZERS[key] for key in ("lwotc", "ancev1")):
         # Put sample in a matrix
         sample = np.zeros([args.number, len(Soldier.STATS)], dtype=np.int16)
         totals = np.zeros([args.number], dtype=np.int16)
         mob_aim_sample = np.zeros([len(MOB_RANGE), len(AIM_RANGE)], dtype=np.uint64)
 
         for i in range(args.number):
-            sol = factory()
+            sol = Soldier(initializer)
             sample[i, :] = [getattr(sol, stat).current for stat in Soldier.STATS]
             totals[i] = sol.weighed_stat_total() - Soldier.DEFAULT_WEIGHED_STAT_TOTAL
             mob_aim_sample[
@@ -109,7 +109,7 @@ if __name__ == "__main__":
             )
 
         # Weighed Stat Total chart
-        if factory == ancev1_factory:
+        if initializer == ancev1_initializer:
             totals_ax.hist(
                 totals,
                 color=COLORS[1],
