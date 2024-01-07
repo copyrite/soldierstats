@@ -105,6 +105,8 @@ class Soldier:
     def to_dict(self):
         return {stat: getattr(self, stat).current for stat in self.STATS}
 
+Soldier.DEFAULT_WEIGHED_STAT_TOTAL = Soldier().weighed_stat_total()
+
 
 class StatSwapper:
     __slots__ = ["dice", "swap_table"]
@@ -159,6 +161,7 @@ class StatSwapper:
             raise RuntimeError(
                 f"Swap {swap} would have swapped an attribute out of bounds"
             )
+
 
 lwotc_factory = partial(Soldier, StatSwapper(5 * (4,), LWOTC_SWAPS))
 ancev1_factory = partial(Soldier, StatSwapper(8 *(8,), ANCEV1_SWAPS))

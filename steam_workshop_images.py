@@ -20,7 +20,7 @@ EXPLAINER = {
     "linewidth": 0.75,
     "alpha": 0.5,
 }
-IMG_FILE_PREFIX = "SteamWorkshop_"
+IMG_PREFIX = "img/SteamWorkshop"
 
 AIM_RANGE = range(
     Soldier.STATS["Offense"].default + Soldier.STATS["Offense"].min_delta,
@@ -43,7 +43,7 @@ class FigSaver:
     @staticmethod
     def save_fig(fig):
         __class__.count += 1
-        fig.savefig(f"img/SteamWorkshop{str(__class__.count).zfill(2)}.png")
+        fig.savefig(f"{IMG_PREFIX}{str(__class__.count).zfill(2)}.png")
 
 
 if __name__ == "__main__":
@@ -83,13 +83,12 @@ if __name__ == "__main__":
         # Put sample in a matrix
         sample = np.zeros([args.number, len(Soldier.STATS)], dtype=np.int16)
         totals = np.zeros([args.number], dtype=np.int16)
-        default_total = Soldier().weighed_stat_total()
         mob_aim_sample = np.zeros([len(MOB_RANGE), len(AIM_RANGE)], dtype=np.uint64)
 
         for i in range(args.number):
             sol = factory()
             sample[i, :] = [getattr(sol, stat).current for stat in Soldier.STATS]
-            totals[i] = sol.weighed_stat_total() - default_total
+            totals[i] = sol.weighed_stat_total() - Soldier.DEFAULT_WEIGHED_STAT_TOTAL
             mob_aim_sample[
                 getattr(sol, "Mobility").current - min(MOB_RANGE),
                 getattr(sol, "Offense").current - min(AIM_RANGE),

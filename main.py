@@ -39,6 +39,13 @@ if __name__ == "__main__":
         help="Which stat generation type to use",
         required=True,
     )
+    parser.add_argument(
+        "--plt-show",
+        "--mpl-show",
+        "--show",
+        action="store_true",
+        help="Show a MatPlotLib window with the results",
+    )
     args = parser.parse_args()
 
     # dataset will look like:
@@ -53,29 +60,35 @@ if __name__ == "__main__":
         for stat, range_ in Soldier.STATS.items()
     )
 
-    barracks = [SOLDIER_GEN_TYPES[args.generation_type]() for _ in range(args.number)]
-    for sol in barracks:
-        for stat, range_ in Soldier.STATS.items():
-            # Increment the correct position in the array by 1. [0] contains the minimum of the stat, etc.
-            dataset[stat][
-                getattr(sol, stat).current - (range_.default + range_.min_delta)
-            ] += 1
+    sample = np.zeros([args.number, len(Soldier.STATS)], dtype=np.int16)
+    totals = np.zeros([args.number, len(Soldier.STATS)], dtype=np.int16)
 
-    fig, axs = plt.subplots(4, 2)
-    for i, (stat, range_) in enumerate(Soldier.STATS.items()):
-        ax = axs[i // 2, i % 2]
-        ax.set_title(stat)
-        ax.bar(
-            x=range(
+    for i in range(args.number):
+        sol = SOLDIER_GEN_TYPES[args.generation_type]()
+        sample[i, :] = [getattr(sol, stat).current for stat in Soldier.STATS]
+        totals[i] = sol.weighed_stat_total() - Soldier.DEFAULT_WEIGHED_STAT_TOTAL
+
+    if (args.plt_show):
+        fig, axs = plt.subplots(4, 2)
+        for stat_index, (stat, range_) in enumerate(Soldier.STATS.items()):
+            values = range(
                 range_.default + range_.min_delta, range_.default + range_.max_delta + 1
-            ),
-            height=dataset[stat] / args.number,
-        )
+            )
 
-    if args.totals:
-        axs[3, 1].hist(list(sol.weighed_stat_total() for sol in barracks))
-    else:
-        axs[-1, -1].remove()
+            ax = axs[stat_index // 2, stat_index % 2]
+            ax.set_title(stat)
+            ax.bar(
+                x=[value for value in values],
+                width=0.75,
+                height=[(sample[:, stat_index] == value).sum() for value in values],
+                edgecolor="black",
+                linewidth=0.75,
+            )
 
-    fig.tight_layout()
-    plt.show()
+        if args.totals:
+            axs[3, 1].hist(list(sol.weighed_stat_total() for sol in barracks))
+        else:
+            axs[-1, -1].remove()
+
+        fig.tight_layout()
+        plt.show()
