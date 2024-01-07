@@ -3,6 +3,7 @@ from typing import Tuple
 
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy
 
 from soldier import Soldier, INITIALIZERS
 
@@ -42,6 +43,11 @@ if __name__ == "__main__":
         action="store_true",
         help="Show a MatPlotLib window with the results",
     )
+    parser.add_argument(
+        "--statistics",
+        action="store_true",
+        # help="Calculate statistics of the input and append them to the given file"
+    )
     args = parser.parse_args()
 
     # dataset will look like:
@@ -68,7 +74,15 @@ if __name__ == "__main__":
         sample[i, :] = [getattr(sol, stat).current for stat in Soldier.STATS]
         totals[i] = sol.weighed_stat_total() - Soldier.DEFAULT_WEIGHED_STAT_TOTAL
 
-    if (args.plt_show):
+    if args.statistics:
+        mean = sample.mean(0)
+        cov = np.diag(np.cov(sample.T))
+        skew = scipy.stats.skew(sample)
+        print("Mean:", mean)
+        print("Variance:", cov)
+        print("Skewness:", skew)
+
+    if args.plt_show:
         fig, axs = plt.subplots(4, 2)
         for stat_index, (stat, range_) in enumerate(Soldier.STATS.items()):
             values = range(
