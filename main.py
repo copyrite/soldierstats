@@ -14,6 +14,61 @@ def dice_notation(shorthand: str) -> Tuple[int, int]:
     left, _, right = shorthand.partition("d")
     return int(left) * (int(right),)
 
+def generate_sample(n, initializer, totals=False):
+    """Generate a sample of `n` soldiers initialized with `initializer`"""
+    sample = np.zeros([args.number, len(Soldier.STATS)+bool(totals)], dtype=np.int16)
+
+    for i in range(n):
+        sol = Soldier(initializer)
+        stats = [getattr(sol, stat).current for stat in Soldier.STATS]
+        if totals:
+            total = sol.weighed_stat_total() - Soldier.DEFAULT_WEIGHED_STAT_TOTAL
+            sample[i, :] = stats + [total]
+        else:
+            sample[i, :] = stats
+
+    return sample
+
+def main(args):
+    initializer = INITIALIZERS[args.initializer]
+    if args.rolls is not None:
+        initializer.dice = args.rolls
+
+    sample = generate_sample(args.number, initializer, args.totals)
+
+    if args.statistics:
+        mean = sample.mean(0)
+        cov = np.diag(np.cov(sample.T))
+        skew = scipy.stats.skew(sample)
+        print("Mean:", mean)
+        print("Variance:", cov)
+        print("Skewness:", skew)
+
+    if args.plt_show:
+        fig, axs = plt.subplots(4, 2)
+        for stat_index, (stat, range_) in enumerate(Soldier.STATS.items()):
+            values = range(
+                range_.default + range_.min_delta, range_.default + range_.max_delta + 1
+            )
+
+            ax = axs[stat_index // 2, stat_index % 2]
+            ax.set_title(stat)
+            ax.bar(
+                x=[value for value in values],
+                width=0.75,
+                height=[(sample[:, stat_index] == value).sum() for value in values],
+                edgecolor="black",
+                linewidth=0.75,
+            )
+
+        if args.totals:
+            axs[3, 1].hist(sample[:, -1])
+        else:
+            axs[-1, -1].remove()
+
+        fig.tight_layout()
+        plt.show()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("python soldierstats.py")
@@ -50,59 +105,4 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    # dataset will look like:
-    # {
-    #     "eStat_Offense": np.array([0, 0, 0, ..., 0]),
-    #     "eStat_Mobility": np.array([0, 0, 0, 0, 0, 0]),
-    #     ...
-    #     "eStat_PsiOffense": np.array([0, 0, 0, ..., 0]),
-    # }
-    dataset = dict(
-        (stat, np.zeros(range_.max_delta - range_.min_delta + 1))
-        for stat, range_ in Soldier.STATS.items()
-    )
-
-    sample = np.zeros([args.number, len(Soldier.STATS)], dtype=np.int16)
-    totals = np.zeros([args.number], dtype=np.int16)
-
-    initializer = INITIALIZERS[args.initializer]
-    if args.rolls is not None:
-        initializer.dice = args.rolls
-
-    for i in range(args.number):
-        sol = Soldier(initializer)
-        sample[i, :] = [getattr(sol, stat).current for stat in Soldier.STATS]
-        totals[i] = sol.weighed_stat_total() - Soldier.DEFAULT_WEIGHED_STAT_TOTAL
-
-    if args.statistics:
-        mean = sample.mean(0)
-        cov = np.diag(np.cov(sample.T))
-        skew = scipy.stats.skew(sample)
-        print("Mean:", mean)
-        print("Variance:", cov)
-        print("Skewness:", skew)
-
-    if args.plt_show:
-        fig, axs = plt.subplots(4, 2)
-        for stat_index, (stat, range_) in enumerate(Soldier.STATS.items()):
-            values = range(
-                range_.default + range_.min_delta, range_.default + range_.max_delta + 1
-            )
-
-            ax = axs[stat_index // 2, stat_index % 2]
-            ax.set_title(stat)
-            ax.bar(
-                x=[value for value in values],
-                width=0.75,
-                height=[(sample[:, stat_index] == value).sum() for value in values],
-                edgecolor="black",
-                linewidth=0.75,
-            )
-
-        if args.totals:
-            axs[3, 1].hist(list(sol.weighed_stat_total() for sol in barracks))
-        else:
-            axs[-1, -1].remove()
-
-        fig.tight_layout()
-        plt.show()
+    main(args)

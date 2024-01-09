@@ -85,6 +85,7 @@ if __name__ == "__main__":
         totals = np.zeros([args.number], dtype=np.int16)
         mob_aim_sample = np.zeros([len(MOB_RANGE), len(AIM_RANGE)], dtype=np.uint64)
 
+        # TODO: Refactor to use `main.generate_sample`
         for i in range(args.number):
             sol = Soldier(initializer)
             sample[i, :] = [getattr(sol, stat).current for stat in Soldier.STATS]

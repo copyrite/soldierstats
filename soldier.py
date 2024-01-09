@@ -3,6 +3,7 @@ from collections import namedtuple
 from functools import partial
 from typing import Sequence
 
+# TODO: Rename to StatRange?
 Stat = namedtuple(
     "Stat", ("default", "min_delta", "max_delta", "weight"), defaults=(1,)
 )
