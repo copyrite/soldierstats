@@ -16,7 +16,7 @@ def dice_notation(shorthand: str) -> Tuple[int, int]:
 
 def generate_sample(n, initializer, totals=False):
     """Generate a sample of `n` soldiers initialized with `initializer`"""
-    sample = np.zeros([args.number, len(Soldier.STATS)+bool(totals)], dtype=np.int16)
+    sample = np.zeros([n, len(Soldier.STATS)+bool(totals)], dtype=np.int16)
 
     for i in range(n):
         sol = Soldier(initializer)
