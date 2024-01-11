@@ -72,25 +72,46 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.experiment == 1:
-        result = sp.optimize.minimize(
-            fitness,
-            [1]*len(Soldier.STATS)*args.parameter, args=(args.number, args.parameter),
-            method="Nelder-Mead",
-            callback=lambda *args, **kwargs: print(args, kwargs),
-        )
-        print(result)
+    match args.experiment:
+        case 1:
+            result = sp.optimize.minimize(
+                fitness,
+                [1]*len(Soldier.STATS)*args.parameter, args=(args.number, args.parameter),
+                method="Nelder-Mead",
+                callback=lambda *args, **kwargs: print(args, kwargs),
+            )
+            print(result)
 
-    elif args.experiment == 2:
-        result = sp.optimize.minimize(
-            fitness_cov_ratios,
-            [1]*len(Soldier.STATS), args=(args.number,),
-            method="Nelder-Mead",
-            callback=lambda *args, **kwargs: print(args, kwargs),
-        )
-        print(result)
+        case 2:
+            result = sp.optimize.minimize(
+                fitness_cov_ratios,
+                [1]*len(Soldier.STATS), args=(args.number,),
+                method="Nelder-Mead",
+                callback=lambda *args, **kwargs: print(args, kwargs),
+            )
+            print(result)
 
-    # d = len(Soldier.STATS)
-    # roll = sorted(random() for __ in range(d-1))
-    # roll = list(x - y for x, y in zip(roll + [1], [0] + roll))
-
+        case 3:
+            d = len(Soldier.STATS)
+            p = args.parameter
+            weights = np.ndarray([p, d], dtype=np.float64)
+            covs = np.ndarray([p, d], dtype=np.float64)
+            for i in range(p):
+                roll = sorted(random() for __ in range(d-1))
+                roll = list(x - y for x, y in zip(roll + [1], [0] + roll))
+                weights[i, :] = roll
+                sample = generate_sample(
+                    args.number,
+                    StatSwapper(
+                        5*(4,),
+                        list(
+                            StatSwap(stat, 1, stat, 0, weight) for weight, stat in zip(roll, Soldier.STATS)
+                        )
+                    )
+                )
+                covs[i, :] = np.diag(np.cov(sample.T))
+            ax = plt.subplot()
+            for i, (w, c) in enumerate(zip(weights.T, covs.T)):
+                ax.scatter(w, c, marker=".")
+            ax.legend(Soldier.STATS)
+            plt.show()
