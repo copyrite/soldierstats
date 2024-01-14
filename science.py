@@ -26,7 +26,7 @@ def memoized_fitness(x, n, parameter):
         StatSwapper(
             5*(4,),
             list(
-                (StatSwap(stat, amount, stat, 0, weight) for weight, (amount, stat) in zip(x, itertools.product(range(1, args.parameter+1), Soldier.STATS)))
+                (StatSwap(stat, amount, stat, 0, weight) for weight, (amount, stat) in zip(x, itertools.product(range(1, parameter+1), Soldier.STATS)))
             )
         )
     )
@@ -67,7 +67,7 @@ if __name__ == "__main__":
         "-e", "--experiment", type=int, help="Which experiment to run", required=True
     )
     parser.add_argument(
-        "-p", "--parameter", type=int, help="Parameter to apply to the experiment", default=1
+        "-p", "--parameters", type=int, nargs="+", help="Parameters to apply to the experiment", default=[1]
     )
 
     args = parser.parse_args()
@@ -76,7 +76,7 @@ if __name__ == "__main__":
         case 1:
             result = sp.optimize.minimize(
                 fitness,
-                [1]*len(Soldier.STATS)*args.parameter, args=(args.number, args.parameter),
+                [1]*len(Soldier.STATS)*args.parameters[0], args=(args.number, args.parameters[0]),
                 method="Nelder-Mead",
                 callback=lambda *args, **kwargs: print(args, kwargs),
             )
@@ -93,11 +93,15 @@ if __name__ == "__main__":
 
         case 3:
             d = len(Soldier.STATS)
-            p = args.parameter
-            weights = np.ndarray([p, d], dtype=np.float64)
-            covs = np.ndarray([p, d], dtype=np.float64)
+            p = args.parameters[0]
+            try:
+                m = args.parameters[1]  # "Multiplicity", how many separate rows for the same stat
+            except IndexError:
+                m = 1
+            weights = np.ndarray([p, d*m], dtype=np.float64)
+            covs = np.ndarray([p, d*m], dtype=np.float64)
             for i in range(p):
-                roll = sorted(random() for __ in range(d-1))
+                roll = sorted(random() for __ in range(d*m-1))
                 roll = list(x - y for x, y in zip(roll + [1], [0] + roll))
                 weights[i, :] = roll
                 sample = generate_sample(
@@ -105,7 +109,7 @@ if __name__ == "__main__":
                     StatSwapper(
                         5*(4,),
                         list(
-                            StatSwap(stat, 1, stat, 0, weight) for weight, stat in zip(roll, Soldier.STATS)
+                            StatSwap(stat, amount, stat, 0, weight) for weight, (amount, stat) in zip(roll, itertools.product(range(1, m+1), Soldier.STATS))
                         )
                     )
                 )
