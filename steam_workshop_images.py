@@ -31,6 +31,9 @@ MOB_RANGE = range(
     Soldier.STATS["Mobility"].default + Soldier.STATS["Mobility"].max_delta + 1,
 )
 
+INITIALIZER_1 = "lwotc"
+INITIALIZER_2 = "ancev2"
+
 
 class FigSaver:
     """
@@ -79,7 +82,7 @@ if __name__ == "__main__":
     )
     mob_aim_samples = []  # Need to plot after loop, otherwise colormap won't be shared
 
-    for sample_index, initializer in enumerate(INITIALIZERS[key] for key in ("lwotc", "ancev1")):
+    for sample_index, initializer in enumerate(INITIALIZERS[key] for key in (INITIALIZER_1, INITIALIZER_2)):
         # Put sample in a matrix
         sample = np.zeros([args.number, len(Soldier.STATS)], dtype=np.int16)
         totals = np.zeros([args.number], dtype=np.int16)
@@ -110,7 +113,7 @@ if __name__ == "__main__":
             )
 
         # Weighed Stat Total chart
-        if initializer == ancev1_initializer:
+        if initializer is INITIALIZERS[INITIALIZER_2]:
             totals_ax.hist(
                 totals,
                 color=COLORS[1],
