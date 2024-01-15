@@ -32,7 +32,7 @@ MOB_RANGE = range(
 )
 
 INITIALIZER_1 = "lwotc"
-INITIALIZER_2 = "ancev2"
+INITIALIZER_2 = "ancev3"
 
 
 class FigSaver:
@@ -82,7 +82,9 @@ if __name__ == "__main__":
     )
     mob_aim_samples = []  # Need to plot after loop, otherwise colormap won't be shared
 
-    for sample_index, initializer in enumerate(INITIALIZERS[key] for key in (INITIALIZER_1, INITIALIZER_2)):
+    for sample_index, initializer in enumerate(
+        INITIALIZERS[key] for key in (INITIALIZER_1, INITIALIZER_2)
+    ):
         # Put sample in a matrix
         sample = np.zeros([args.number, len(Soldier.STATS)], dtype=np.int16)
         totals = np.zeros([args.number], dtype=np.int16)

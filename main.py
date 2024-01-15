@@ -7,6 +7,7 @@ import scipy
 
 from soldier import Soldier, INITIALIZERS
 
+
 def dice_notation(shorthand: str) -> Tuple[int, int]:
     """A simple parser for "NdX" style dice notation."""
     if shorthand is None:
@@ -14,9 +15,10 @@ def dice_notation(shorthand: str) -> Tuple[int, int]:
     left, _, right = shorthand.partition("d")
     return int(left) * (int(right),)
 
+
 def generate_sample(n, initializer, totals=False):
     """Generate a sample of `n` soldiers initialized with `initializer`"""
-    sample = np.zeros([args.number, len(Soldier.STATS)+bool(totals)], dtype=np.int16)
+    sample = np.zeros([n, len(Soldier.STATS) + bool(totals)], dtype=np.int16)
 
     for i in range(n):
         sol = Soldier(initializer)
@@ -28,6 +30,7 @@ def generate_sample(n, initializer, totals=False):
             sample[i, :] = stats
 
     return sample
+
 
 def main(args):
     initializer = INITIALIZERS[args.initializer]

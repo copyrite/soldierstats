@@ -95,6 +95,44 @@ ANCEV2_SWAPS = (
     StatSwap("PsiOffense", 12, "PsiOffense", 0, 2.0),
 )
 
+ANCEV3_SWAPS = (
+    StatSwap("Offense", 1, "Offense", 0, 2.5),
+    StatSwap("Offense", 2, "Offense", 0, 2.0),
+    StatSwap("Offense", 3, "Offense", 0, 1.5),
+    StatSwap("Offense", 4, "Offense", 0, 1.0),
+    StatSwap("Offense", 5, "Offense", 0, 0.5),
+    StatSwap("Offense", 6, "Offense", 0, 0.5),
+    StatSwap("Mobility", 1, "Mobility", 0, 3.5),
+    StatSwap("HP", 1, "HP", 0, 4.0),
+    StatSwap("Will", 1, "Will", 0, 2.0),
+    StatSwap("Will", 2, "Will", 0, 2.0),
+    StatSwap("Will", 3, "Will", 0, 1.5),
+    StatSwap("Will", 4, "Will", 0, 1.5),
+    StatSwap("Will", 5, "Will", 0, 1.5),
+    StatSwap("Will", 6, "Will", 0, 1.0),
+    StatSwap("Will", 7, "Will", 0, 1.0),
+    StatSwap("Dodge", 1, "Dodge", 0, 2.5),
+    StatSwap("Dodge", 2, "Dodge", 0, 2.5),
+    StatSwap("Dodge", 3, "Dodge", 0, 1.5),
+    StatSwap("Dodge", 4, "Dodge", 0, 1.5),
+    StatSwap("Dodge", 5, "Dodge", 0, 1.5),
+    StatSwap("Dodge", 6, "Dodge", 0, 1.0),
+    StatSwap("Dodge", 7, "Dodge", 0, 1.0),
+    StatSwap("Hacking", 1, "Hacking", 0, 3.0),
+    StatSwap("Hacking", 2, "Hacking", 0, 1.0),
+    StatSwap("Hacking", 3, "Hacking", 0, 0.75),
+    StatSwap("Hacking", 4, "Hacking", 0, 0.5),
+    StatSwap("Hacking", 5, "Hacking", 0, 0.25),
+    StatSwap("PsiOffense", 1, "PsiOffense", 0, 1.5),
+    StatSwap("PsiOffense", 2, "PsiOffense", 0, 1.5),
+    StatSwap("PsiOffense", 3, "PsiOffense", 0, 2.0),
+    StatSwap("PsiOffense", 4, "PsiOffense", 0, 2.0),
+    StatSwap("PsiOffense", 5, "PsiOffense", 0, 2.0),
+    StatSwap("PsiOffense", 6, "PsiOffense", 0, 1.5),
+    StatSwap("PsiOffense", 7, "PsiOffense", 0, 1.5),
+    # StatSwap("PsiOffense", 12, "PsiOffense", 0, 2.0),
+)
+
 
 class EStat:  # Called that because that's what they're called internally in LWOTC
     def __init__(self, stat_range: Stat):
@@ -112,6 +150,7 @@ class Soldier:
         "Hacking": Stat(5, -4, 15),
         "PsiOffense": Stat(20, -15, 15),
     }
+    DEFAULT_WEIGHED_STAT_TOTAL: int
     __slots__ = list(STATS) + ["initializer"]
 
     def __init__(self, initializer=None):
@@ -138,18 +177,18 @@ class Soldier:
     def to_dict(self):
         return {stat: getattr(self, stat).current for stat in self.STATS}
 
+
 Soldier.DEFAULT_WEIGHED_STAT_TOTAL = Soldier().weighed_stat_total()
 
 
 class StatSwapper:
     __slots__ = ["dice", "swap_table"]
 
-    def __init__(self, dice: Sequence[int]=(), swap_table: Sequence[StatSwap] = ()):
+    def __init__(self, dice: Sequence[int] = (), swap_table: Sequence[StatSwap] = ()):
         self.dice = dice
         self.swap_table = swap_table
 
     def __call__(self, sol: Soldier):
-
         # Roll for number of stats to apply
         for __ in range(sum(random.randint(1, dice) for dice in self.dice)):
             # Try 1000 times to find a suitable swap
@@ -195,8 +234,10 @@ class StatSwapper:
                 f"Swap {swap} would have swapped an attribute out of bounds"
             )
 
+
 INITIALIZERS = {
     "lwotc": StatSwapper(5 * (4,), LWOTC_SWAPS),
     "ancev1": StatSwapper(8 * (8,), ANCEV1_SWAPS),
     "ancev2": StatSwapper(10 * (4,), ANCEV2_SWAPS),
+    "ancev3": StatSwapper(10 * (4,), ANCEV3_SWAPS),
 }
