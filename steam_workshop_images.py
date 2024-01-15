@@ -32,7 +32,7 @@ MOB_RANGE = range(
 )
 
 INITIALIZER_1 = "lwotc"
-INITIALIZER_2 = "ancev2"
+INITIALIZER_2 = "ancev3"
 
 
 class FigSaver:
